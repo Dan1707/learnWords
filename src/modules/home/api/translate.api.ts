@@ -9,4 +9,14 @@ export const unseTranslate = {
 	async getLanguages(): Promise<languages | void> {
 		return axios.get('/api/languages').then(res => console.log(res.data))
 	},
+
+	async translateText(
+		sl: string,
+		dl: string,
+		text: string
+	): Promise<TranslationResponse> {
+		return axios
+			.get(`/api/translate?sl=${sl}&dl=${dl}&text=${text}`)
+			.then(res => res.data)
+	},
 }
