@@ -10,14 +10,19 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@ui/select'
+import { unseTranslate } from './api/translate.api'
+
+unseTranslate.getLanguages()
 </script>
 
 <template>
 	<section>
 		<div class="container mt-15">
+			<!-- TITLE -->
 			<h1 class="text-5xl dark:text-white font-extrabold text-primary">
 				Welcome back, user!
 			</h1>
+			<!-- TRANSLATE AREA -->
 			<div class="flex items-center gap-5 mt-7">
 				<div class="w-full">
 					<Select>
