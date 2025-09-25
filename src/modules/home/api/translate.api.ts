@@ -6,8 +6,8 @@ import type {
 import axios from 'axios'
 
 export const unseTranslate = {
-	async getLanguages(): Promise<languages | void> {
-		return axios.get('/api/languages').then(res => console.log(res.data))
+	async getLanguages(): Promise<languages> {
+		return axios.get('/api/languages').then(res => res.data)
 	},
 
 	async translateText(

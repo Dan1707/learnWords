@@ -14,20 +14,57 @@ import { unseTranslate } from './api/translate.api'
 import { ref, watch } from 'vue'
 import { useDebounce, useDebounceFn } from '@vueuse/core'
 import { Volume2 } from 'lucide-vue-next'
+import type { languages } from '@/shared/types/translate.type'
+import { supabase } from '@/shared/api/supabase'
 
 // GET LANGUAGES
-unseTranslate.getLanguages()
+interface langObj {
+	id: string
+	name: string
+}
+
+const langArr = ref<langObj[]>([])
+const getLanguages = async () => {
+	try {
+		const { data, error } = await supabase.from('languages').select('*')
+
+		langArr.value = data as langObj[]
+	} catch (error) {
+		console.log(`Error with fetching languages: ${error}`)
+	}
+}
+
+getLanguages()
+
+// SEARCH LANGUAGES
+const searchingLang = ref('')
+
+const searchLanguages = async () => {
+	try {
+		const { data, error } = await supabase
+			.from('languages')
+			.select('*')
+			.ilike('name', `%${searchingLang.value}%`)
+
+		langArr.value = data as langObj[]
+
+		console.log(data)
+	} catch (error) {
+		console.log(`Error with searching languages: ${error}`)
+	}
+}
 
 // TRANSLATE TEXT
 const sourceText = ref('')
 const translatedText = ref('')
 const isLoading = ref(false)
+const targetLang = ref('')
 
 const translateText = async () => {
 	try {
 		isLoading.value = true
 
-		const res = await unseTranslate.translateText('uk', 'en', sourceText.value)
+		const res = await unseTranslate.translateText('de', 'uk', sourceText.value)
 
 		console.log(res)
 
@@ -41,16 +78,10 @@ const translateText = async () => {
 
 const debouncedFn = useDebounceFn(() => {
 	translateText()
-}, 200)
+}, 500)
 
 watch([sourceText, translatedText], () => {
 	if (sourceText.value.length === 0) {
-		translatedText.value = ''
-	}
-})
-
-watch(isLoading, () => {
-	if (isLoading.value) {
 		translatedText.value = ''
 	}
 })
@@ -70,7 +101,7 @@ watch(isLoading, () => {
 						<SelectTrigger class="w-full">
 							<SelectValue placeholder="Select a fruit" />
 						</SelectTrigger>
-						<SelectContent>
+						<SelectContent class="dark:bg-gray-900">
 							<SelectGroup>
 								<SelectLabel>Fruits</SelectLabel>
 								<SelectItem value="apple"> Apple </SelectItem>
@@ -86,12 +117,31 @@ watch(isLoading, () => {
 					/>
 				</div>
 				<div class="w-full">
-					<Select>
-						<SelectTrigger class="w-full">
+					<Select v-model="targetLang">
+						<SelectTrigger
+							class="w-full dark:text-white dark:!placeholder:text-muted-foreground"
+						>
 							<SelectValue placeholder="Select a fruit" />
 						</SelectTrigger>
-						<SelectContent>
-							<Input />
+						<SelectContent class="dark:bg-gray-900 relative" @keydown.stop>
+							<Input
+								type="text"
+								placeholder="search language"
+								v-model="searchingLang"
+								@input="searchLanguages"
+								@keydown.stop
+								class="sticky top-0"
+							/>
+							<div class="mt-3">
+								<SelectItem
+									v-for="langs in langArr"
+									:key="langs.id"
+									class="p-2 cursor-pointer"
+									:value="langs.id"
+								>
+									{{ langs.name }}
+								</SelectItem>
+							</div>
 						</SelectContent>
 					</Select>
 					<div class="relative">

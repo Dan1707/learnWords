@@ -24,7 +24,7 @@ watch(isDarkTheme, newVal => {
 </script>
 
 <template>
-	<div class="wfull min-h-screen flex flex-col bg-white dark:bg-gray-900">
+	<div class="wfull min-h-screen flex flex-col bg-white dark:bg-gray-950">
 		<!-- HEADER -->
 		<header>
 			<div class="container py-4 flex items-center justify-between">
