@@ -13,58 +13,28 @@ import {
 import { unseTranslate } from './api/translate.api'
 import { ref, watch } from 'vue'
 import { useDebounce, useDebounceFn } from '@vueuse/core'
-import { Volume2 } from 'lucide-vue-next'
+import { ArrowRightLeft, Volume2 } from 'lucide-vue-next'
 import type { languages } from '@/shared/types/translate.type'
 import { supabase } from '@/shared/api/supabase'
-
-// GET LANGUAGES
-interface langObj {
-	id: string
-	name: string
-}
-
-const langArr = ref<langObj[]>([])
-const getLanguages = async () => {
-	try {
-		const { data, error } = await supabase.from('languages').select('*')
-
-		langArr.value = data as langObj[]
-	} catch (error) {
-		console.log(`Error with fetching languages: ${error}`)
-	}
-}
-
-getLanguages()
-
-// SEARCH LANGUAGES
-const searchingLang = ref('')
-
-const searchLanguages = async () => {
-	try {
-		const { data, error } = await supabase
-			.from('languages')
-			.select('*')
-			.ilike('name', `%${searchingLang.value}%`)
-
-		langArr.value = data as langObj[]
-
-		console.log(data)
-	} catch (error) {
-		console.log(`Error with searching languages: ${error}`)
-	}
-}
+import SelectLang from './components/selectLang.vue'
 
 // TRANSLATE TEXT
 const sourceText = ref('')
 const translatedText = ref('')
 const isLoading = ref(false)
-const targetLang = ref('')
+
+const sourceLang = ref('')
+const targetLang = ref('en')
 
 const translateText = async () => {
 	try {
 		isLoading.value = true
 
-		const res = await unseTranslate.translateText('de', 'uk', sourceText.value)
+		const res = await unseTranslate.translateText(
+			sourceLang.value,
+			targetLang.value,
+			sourceText.value
+		)
 
 		console.log(res)
 
@@ -80,11 +50,16 @@ const debouncedFn = useDebounceFn(() => {
 	translateText()
 }, 500)
 
-watch([sourceText, translatedText], () => {
-	if (sourceText.value.length === 0) {
-		translatedText.value = ''
-	}
-})
+const isRotated = ref(false)
+
+const switchLangs = () => {
+	isRotated.value = !isRotated.value
+
+	const copy = sourceLang.value
+
+	sourceLang.value = targetLang.value
+	targetLang.value = copy
+}
 </script>
 
 <template>
@@ -95,19 +70,9 @@ watch([sourceText, translatedText], () => {
 				Welcome back, user!
 			</h1>
 			<!-- TRANSLATE AREA -->
-			<div class="flex items-center gap-5 mt-7">
+			<div class="flex items-start gap-3 mt-7">
 				<div class="w-full">
-					<Select>
-						<SelectTrigger class="w-full">
-							<SelectValue placeholder="Select a fruit" />
-						</SelectTrigger>
-						<SelectContent class="dark:bg-gray-900">
-							<SelectGroup>
-								<SelectLabel>Fruits</SelectLabel>
-								<SelectItem value="apple"> Apple </SelectItem>
-							</SelectGroup>
-						</SelectContent>
-					</Select>
+					<SelectLang @sendLang="lang => (sourceLang = lang)" />
 					<Textarea
 						type="text"
 						class="h-100 mt-3 dark:text-white placeholder:text-2xl resize-none !p-5 !text-2xl"
@@ -116,34 +81,17 @@ watch([sourceText, translatedText], () => {
 						@input="debouncedFn"
 					/>
 				</div>
+				<button
+					class="cursor-pointer p-3 rounded-xl hover:bg-gray-700 duration-300"
+					@click="switchLangs"
+				>
+					<ArrowRightLeft
+						class="stroke-white duration-300"
+						:class="{ 'rotate-180': isRotated === true }"
+					/>
+				</button>
 				<div class="w-full">
-					<Select v-model="targetLang">
-						<SelectTrigger
-							class="w-full dark:text-white dark:!placeholder:text-muted-foreground"
-						>
-							<SelectValue placeholder="Select a fruit" />
-						</SelectTrigger>
-						<SelectContent class="dark:bg-gray-900 relative" @keydown.stop>
-							<Input
-								type="text"
-								placeholder="search language"
-								v-model="searchingLang"
-								@input="searchLanguages"
-								@keydown.stop
-								class="sticky top-0"
-							/>
-							<div class="mt-3">
-								<SelectItem
-									v-for="langs in langArr"
-									:key="langs.id"
-									class="p-2 cursor-pointer"
-									:value="langs.id"
-								>
-									{{ langs.name }}
-								</SelectItem>
-							</div>
-						</SelectContent>
-					</Select>
+					<SelectLang @sendLang="lang => (targetLang = lang)" />
 					<div class="relative">
 						<Textarea
 							type="text"
