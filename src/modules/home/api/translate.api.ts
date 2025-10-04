@@ -11,12 +11,16 @@ export const unseTranslate = {
 	},
 
 	async translateText(
-		sl: string,
+		text: string,
 		dl: string,
-		text: string
+		sl?: string
 	): Promise<TranslationResponse> {
 		return axios
-			.get(`/api/translate?sl=${sl}&dl=${dl}&text=${text}`)
+			.get(
+				sl
+					? `/api/translate?sl=${sl}&dl=${dl}&text=${text}`
+					: `/api/translate?dl=${dl}&text=${text}`
+			)
 			.then(res => res.data)
 	},
 }

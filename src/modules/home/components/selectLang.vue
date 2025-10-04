@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { supabase } from '@/shared/api/supabase'
-import { ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import Input from '@ui/input/Input.vue'
 import {
 	Select,
@@ -11,6 +11,26 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@ui/select'
+
+const props = defineProps<{
+	currentLang: langObj
+}>()
+
+watch(
+	() => props.currentLang,
+	newVal => {
+		if (!newVal || !newVal.id) {
+			currentLang.value = null
+		} else {
+			currentLang.value = newVal
+		}
+	},
+	{ deep: true }
+)
+
+onMounted(() => {
+	currentLang.value = props.currentLang
+})
 
 const emit = defineEmits(['sendLang'])
 
@@ -35,7 +55,8 @@ const getLanguages = async () => {
 getLanguages()
 
 // SEARCH LANGUAGES
-const currentLang = ref('')
+const currentLang = ref<langObj | null>()
+const currentLangFullName = ref('')
 const searchingLang = ref('')
 
 const searchLanguages = async () => {
@@ -61,9 +82,13 @@ watch(currentLang, () => {
 		<SelectTrigger
 			class="w-full dark:text-white dark:!placeholder:text-muted-foreground"
 		>
-			<SelectValue placeholder="Select a language" />
+			<SelectValue placeholder="Select a language">
+				<p v-if="currentLang">
+					{{ currentLang?.name }}
+				</p>
+			</SelectValue>
 		</SelectTrigger>
-		<SelectContent class="relative" @keydown.stop>
+		<SelectContent>
 			<Input
 				type="text"
 				placeholder="search language"
@@ -73,12 +98,7 @@ watch(currentLang, () => {
 				class="sticky top-0"
 			/>
 			<div class="mt-3">
-				<SelectItem
-					v-for="langs in langArr"
-					:key="langs.id"
-					class="p-2 cursor-pointer"
-					:value="langs.id"
-				>
+				<SelectItem v-for="langs in langArr" :key="langs.id" :value="langs">
 					{{ langs.name }}
 				</SelectItem>
 			</div>

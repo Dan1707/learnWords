@@ -11,34 +11,74 @@ import {
 	SelectValue,
 } from '@ui/select'
 import { unseTranslate } from './api/translate.api'
-import { ref, watch } from 'vue'
+import { ref, watch, type Ref } from 'vue'
 import { useDebounce, useDebounceFn } from '@vueuse/core'
 import { ArrowRightLeft, Volume2 } from 'lucide-vue-next'
-import type { languages } from '@/shared/types/translate.type'
+import type {
+	languages,
+	TranslationResponse,
+} from '@/shared/types/translate.type'
 import { supabase } from '@/shared/api/supabase'
 import SelectLang from './components/selectLang.vue'
+
+// FIND SINGLE LANGUAGE
+const fingSingleLang = async (
+	langId: string,
+	langVar: Ref<langObj | undefined>
+) => {
+	try {
+		let { data, error } = await supabase
+			.from('languages')
+			.select('*')
+			.eq('id', `${langId}`)
+
+		if (data && data[0]) {
+			langVar.value = data[0] as langObj
+		}
+	} catch (error) {
+		console.log(error)
+	}
+}
 
 // TRANSLATE TEXT
 const sourceText = ref('')
 const translatedText = ref('')
 const isLoading = ref(false)
 
-const sourceLang = ref('')
-const targetLang = ref('en')
+interface langObj {
+	id: string
+	name: string
+}
+
+const sourceLang = ref<langObj>()
+const targetLang = ref<langObj>()
 
 const translateText = async () => {
 	try {
 		isLoading.value = true
 
-		const res = await unseTranslate.translateText(
-			sourceLang.value,
-			targetLang.value,
-			sourceText.value
-		)
+		if (sourceLang.value === undefined) {
+			const res = await unseTranslate.translateText(
+				sourceText.value,
+				targetLang.value?.id as string
+			)
 
-		console.log(res)
+			console.log(res)
 
-		translatedText.value = res['destination-text']
+			translatedText.value = res['destination-text']
+
+			if (res['source-language']) {
+				fingSingleLang(res['source-language'], sourceLang)
+			}
+		} else {
+			const res = await unseTranslate.translateText(
+				sourceText.value,
+				targetLang.value?.id as string,
+				sourceLang.value?.id as string
+			)
+
+			translatedText.value = res['destination-text']
+		}
 	} catch (error) {
 		console.log(error)
 	} finally {
@@ -50,16 +90,38 @@ const debouncedFn = useDebounceFn(() => {
 	translateText()
 }, 500)
 
+// FIND USER DEVICE LANGUAGE
+fingSingleLang(navigator.language, targetLang)
+
+// SWITCH LANGUAGES
 const isRotated = ref(false)
+const isDisabledReverse = ref(false)
 
 const switchLangs = () => {
-	isRotated.value = !isRotated.value
-
 	const copy = sourceLang.value
+	const copyText = sourceText.value
 
-	sourceLang.value = targetLang.value
-	targetLang.value = copy
+	if (copy) {
+		isRotated.value = !isRotated.value
+		sourceLang.value = targetLang.value
+		targetLang.value = copy
+
+		sourceText.value = translatedText.value
+		translatedText.value = copyText
+	}
+
+	translateText()
+
+	console.log(sourceLang.value, targetLang.value)
 }
+
+watch(isDisabledReverse, () => {
+	if (sourceLang.value !== undefined || sourceLang.value !== 0) {
+		isDisabledReverse.value = false
+	} else {
+		isDisabledReverse.value = true
+	}
+})
 </script>
 
 <template>
@@ -72,7 +134,10 @@ const switchLangs = () => {
 			<!-- TRANSLATE AREA -->
 			<div class="flex items-start gap-3 mt-7">
 				<div class="w-full">
-					<SelectLang @sendLang="lang => (sourceLang = lang)" />
+					<SelectLang
+						:currentLang="sourceLang as langObj"
+						@sendLang="lang => (sourceLang = lang)"
+					/>
 					<Textarea
 						type="text"
 						class="h-100 mt-3 dark:text-white placeholder:text-2xl resize-none !p-5 !text-2xl"
@@ -82,8 +147,9 @@ const switchLangs = () => {
 					/>
 				</div>
 				<button
-					class="cursor-pointer p-3 rounded-xl hover:bg-gray-700 duration-300"
+					class="cursor-pointer p-3 rounded-xl hover:bg-gray-700 duration-300 disabled:opacity-50 disabled:cursor-auto"
 					@click="switchLangs"
+					:disabled="isDisabledReverse"
 				>
 					<ArrowRightLeft
 						class="stroke-white duration-300"
@@ -91,7 +157,10 @@ const switchLangs = () => {
 					/>
 				</button>
 				<div class="w-full">
-					<SelectLang @sendLang="lang => (targetLang = lang)" />
+					<SelectLang
+						:currentLang="targetLang as langObj"
+						@sendLang="lang => (targetLang = lang)"
+					/>
 					<div class="relative">
 						<Textarea
 							type="text"
