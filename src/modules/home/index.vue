@@ -11,7 +11,7 @@ import {
 	SelectValue,
 } from '@ui/select'
 import { unseTranslate } from './api/translate.api'
-import { ref, watch, type Ref } from 'vue'
+import { onMounted, ref, watch, type Ref } from 'vue'
 import { useDebounce, useDebounceFn } from '@vueuse/core'
 import { ArrowRightLeft, Volume2 } from 'lucide-vue-next'
 import type {
@@ -22,7 +22,7 @@ import { supabase } from '@/shared/api/supabase'
 import SelectLang from './components/selectLang.vue'
 
 // FIND SINGLE LANGUAGE
-const fingSingleLang = async (
+const findSingleLang = async (
 	langId: string,
 	langVar: Ref<langObj | undefined>
 ) => {
@@ -68,7 +68,7 @@ const translateText = async () => {
 			translatedText.value = res['destination-text']
 
 			if (res['source-language']) {
-				fingSingleLang(res['source-language'], sourceLang)
+				findSingleLang(res['source-language'], sourceLang)
 			}
 		} else {
 			const res = await unseTranslate.translateText(
@@ -91,7 +91,7 @@ const debouncedFn = useDebounceFn(() => {
 }, 500)
 
 // FIND USER DEVICE LANGUAGE
-fingSingleLang(navigator.language, targetLang)
+findSingleLang(navigator.language, targetLang)
 
 // SWITCH LANGUAGES
 const isRotated = ref(false)
@@ -122,6 +122,37 @@ watch(isDisabledReverse, () => {
 		isDisabledReverse.value = true
 	}
 })
+
+watch(sourceText, () => {
+	if (sourceText.value.length === 0) {
+		sourceLang.value = { name: '', id: '' }
+	}
+})
+
+const isSourceLangChosen = ref(false)
+
+watch(isSourceLangChosen, () => {
+	console.log(isSourceLangChosen.value)
+})
+
+// PLAY AUDIO WITH WEB SPEECH API
+const playAudio = () => {
+	if ('speechSynthesis' in window && translatedText.value) {
+		window.speechSynthesis.cancel()
+
+		const utterance = new SpeechSynthesisUtterance(translatedText.value)
+
+		utterance.lang = targetLang.value?.id || 'uk-UA'
+
+		utterance.rate = 0.9
+
+		utterance.volume = 1
+
+		window.speechSynthesis.speak(utterance)
+	} else {
+		console.error('Web Speech API не підтримується цим браузером')
+	}
+}
 </script>
 
 <template>
@@ -136,7 +167,11 @@ watch(isDisabledReverse, () => {
 				<div class="w-full">
 					<SelectLang
 						:currentLang="sourceLang as langObj"
-						@sendLang="lang => (sourceLang = lang)"
+						@sendLang="
+							lang => {
+								sourceLang = lang
+							}
+						"
 					/>
 					<Textarea
 						type="text"
@@ -181,6 +216,7 @@ watch(isDisabledReverse, () => {
 						<button
 							v-if="translatedText.length !== 0"
 							class="absolute bottom-5 right-5 cursor-pointer"
+							@click="playAudio"
 						>
 							<Volume2 class="stroke-white w-8 h-8" />
 						</button>
