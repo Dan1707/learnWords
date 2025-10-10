@@ -123,12 +123,6 @@ watch(isDisabledReverse, () => {
 	}
 })
 
-watch(sourceText, () => {
-	if (sourceText.value.length === 0) {
-		sourceLang.value = { name: '', id: '' }
-	}
-})
-
 const isSourceLangChosen = ref(false)
 
 watch(isSourceLangChosen, () => {
